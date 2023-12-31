@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"time"
+
+	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 var version = "1.0.0"
@@ -14,6 +18,12 @@ var version = "1.0.0"
 type config struct {
 	port int
 	env  string
+	db   struct {
+		dsn          string
+		maxOpenConns int
+		maxIdleConns int
+		maxIdleTime  time.Duration
+	}
 }
 
 type application struct {
@@ -26,9 +36,23 @@ func main() {
 
 	flag.IntVar(&cfg.port, "port", 8080, "port to run the server")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
+	flag.StringVar(&cfg.db.dsn, "DSN", "postgres://admin:admin@localhost:5432/greenlight", "Postgres SQL Data Source Name")
+	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
+	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
+	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", 15*time.Minute, "PostgreSQL max connection idle time")
+
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	db, err := OpenDb(cfg)
+
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	defer db.Close()
+	logger.Info("database connection pool established")
 
 	app := &application{
 		config: cfg,
@@ -47,8 +71,30 @@ func main() {
 	// Start the HTTP server.
 	logger.Info("starting server", "addr", srv.Addr, "env", cfg.env)
 
-	err := srv.ListenAndServe()
+	err = srv.ListenAndServe()
 
 	logger.Error(err.Error())
 	os.Exit(1)
+}
+
+func OpenDb(cfg config) (*sql.DB, error) {
+	db, err := sql.Open("pgx", cfg.db.dsn)
+
+	if err != nil {
+		return nil, err
+	}
+
+	db.SetMaxOpenConns(cfg.db.maxOpenConns)
+	db.SetMaxIdleConns(cfg.db.maxIdleConns)
+	db.SetConnMaxIdleTime(cfg.db.maxIdleTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err = db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	return db, nil
 }
