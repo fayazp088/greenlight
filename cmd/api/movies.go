@@ -1,16 +1,31 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/fayazp088/greenlight/internal/data"
 	"github.com/fayazp088/greenlight/internal/models"
 	"github.com/gin-gonic/gin"
 )
 
 func (app *application) createMovieHandler(c *gin.Context) {
-	fmt.Fprintln(c.Writer, "create a new movie")
+
+	var input struct {
+		Title   string       `json:"title"`
+		Year    int32        `json:"year"`
+		Runtime data.Runtime `json:"runtime"`
+		Genres  []string     `json:"genres"`
+	}
+
+	err := app.readJSON(c, &input)
+
+	if err != nil {
+		app.badRequestResponse(c, err)
+		return
+	}
+
+	app.writeJSON(c, http.StatusOK, envelope{"create_movies": input}, nil)
 }
 
 func (app *application) showMovieHandler(c *gin.Context) {
