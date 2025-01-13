@@ -3,11 +3,8 @@ package data
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/go-playground/validator/v10"
 )
 
 var ErrInvalidRuntimeFormat = errors.New("invalid runtime format")
