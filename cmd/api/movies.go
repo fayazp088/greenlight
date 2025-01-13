@@ -6,22 +6,38 @@ import (
 
 	"github.com/fayazp088/greenlight/internal/data"
 	"github.com/fayazp088/greenlight/internal/models"
+	"github.com/fayazp088/greenlight/internal/validator"
 	"github.com/gin-gonic/gin"
 )
 
+type CreateMovieInput struct {
+	Title   string       `json:"title"`
+	Year    int32        `json:"year"`
+	Runtime data.Runtime `json:"runtime"`
+	Genres  []string     `json:"genres"`
+}
+
 func (app *application) createMovieHandler(c *gin.Context) {
 
-	var input struct {
-		Title   string       `json:"title"`
-		Year    int32        `json:"year"`
-		Runtime data.Runtime `json:"runtime"`
-		Genres  []string     `json:"genres"`
-	}
-
+	var input CreateMovieInput
 	err := app.readJSON(c, &input)
 
 	if err != nil {
 		app.badRequestResponse(c, err)
+		return
+	}
+
+	movie := &models.Movie{
+		Title:   input.Title,
+		Year:    input.Year,
+		Runtime: input.Runtime,
+		Genres:  input.Genres,
+	}
+
+	v := validator.New()
+
+	if models.ValidateMovie(v, movie); !v.Valid() {
+		app.failedValidationResponse(c, v.Errors)
 		return
 	}
 

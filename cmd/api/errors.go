@@ -52,3 +52,9 @@ func (app *application) methodNotAllowedResponse(c *gin.Context) {
 func (app *application) badRequestResponse(c *gin.Context, err error) {
 	app.errorResponse(c, http.StatusBadRequest, err.Error())
 }
+
+// Note that the errors parameter here has the type map[string]string, which is exactly
+// the same as the errors map contained in our Validator type.
+func (app *application) failedValidationResponse(c *gin.Context, errors map[string]string) {
+	app.errorResponse(c, http.StatusUnprocessableEntity, errors)
+}

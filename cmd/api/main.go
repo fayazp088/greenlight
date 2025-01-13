@@ -19,6 +19,7 @@ type config struct {
 type application struct {
 	config config
 	logger *slog.Logger
+	// validate *validator.Validate
 }
 
 func main() {
@@ -30,10 +31,13 @@ func main() {
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	// Initialize validator
+	// validate := validator.New()
 
 	app := application{
 		config: cfg,
 		logger: logger,
+		// validate: validate,
 	}
 
 	srv := http.Server{
