@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -9,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/fayazp088/greenlight/internal/models"
 	"github.com/joho/godotenv"
 )
 
@@ -29,6 +30,7 @@ type config struct {
 type application struct {
 	config config
 	logger *slog.Logger
+	models models.Models
 	// validate *validator.Validate
 }
 
@@ -70,6 +72,7 @@ func main() {
 	app := application{
 		config: cfg,
 		logger: logger,
+		models: models.New(db),
 		// validate: validate,
 	}
 
@@ -91,36 +94,26 @@ func main() {
 
 }
 
-func openDB(cfg config) (*pgxpool.Pool, error) {
-	// Create a context with a 5-second timeout deadline.
+func openDB(cfg config) (*sql.DB, error) {
+	db, err := sql.Open("postgres", cfg.db.dsn)
+
+	if err != nil {
+		return nil, err
+	}
+
+	db.SetMaxOpenConns(cfg.db.maxConns)
+	db.SetMaxIdleConns(cfg.db.minConns)
+	db.SetConnMaxIdleTime(cfg.db.maxIdleTime)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Parse the connection string into a pgxpool.Config
-	poolConfig, err := pgxpool.ParseConfig(cfg.db.dsn)
+	err = db.PingContext(ctx)
+
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse connection string: %w", err)
+		db.Close()
+		return nil, err
 	}
 
-	// Optional: Customize pool settings
-	poolConfig.MaxConns = int32(cfg.db.maxConns)    // Maximum number of connections in the pool
-	poolConfig.MinConns = int32(cfg.db.minConns)    // Minimum number of connections in the pool
-	poolConfig.MaxConnLifetime = 30 * time.Minute   // Maximum lifetime of a connection
-	poolConfig.MaxConnIdleTime = cfg.db.maxIdleTime // Maximum idle time for a connection
-
-	// Create a new connection pool
-	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create connection pool: %w", err)
-	}
-
-	// Use Ping to verify the connection pool is working
-	err = pool.Ping(ctx)
-	if err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("unable to ping database: %w", err)
-	}
-
-	// Return the connection pool
-	return pool, nil
+	return db, nil
 }
