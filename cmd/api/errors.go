@@ -58,3 +58,9 @@ func (app *application) badRequestResponse(c *gin.Context, err error) {
 func (app *application) failedValidationResponse(c *gin.Context, errors map[string]string) {
 	app.errorResponse(c, http.StatusUnprocessableEntity, errors)
 }
+
+func (app *application) editConflictResponse(c *gin.Context) {
+	message :=
+		"unable to update the record due to an edit conflict, please try again"
+	app.errorResponse(c, http.StatusConflict, message)
+}

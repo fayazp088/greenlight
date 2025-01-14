@@ -19,10 +19,10 @@ type CreateMovieInput struct {
 }
 
 type UpdateMovieInput struct {
-	Title   string       `json:"title"`
-	Year    int32        `json:"year"`
-	Runtime data.Runtime `json:"runtime"`
-	Genres  []string     `json:"genres"`
+	Title   *string       `json:"title"`
+	Year    *int32        `json:"year"`
+	Runtime *data.Runtime `json:"runtime"`
+	Genres  []string      `json:"genres"`
 }
 
 func (app *application) createMovieHandler(c *gin.Context) {
@@ -94,14 +94,39 @@ func (app *application) updateMovieHandler(c *gin.Context) {
 		return
 	}
 
-	movie.Title = updateMovie.Title
-	movie.Genres = updateMovie.Genres
-	movie.Runtime = updateMovie.Runtime
-	movie.Year = updateMovie.Year
+	if updateMovie.Title != nil {
+		movie.Title = *updateMovie.Title
+	}
+
+	if updateMovie.Genres != nil {
+		movie.Genres = updateMovie.Genres
+	}
+
+	if updateMovie.Runtime != nil {
+		movie.Runtime = *updateMovie.Runtime
+	}
+
+	if updateMovie.Year != nil {
+		movie.Year = *updateMovie.Year
+	}
+
+	v := validator.New()
+
+	if models.ValidateMovie(v, movie); !v.Valid() {
+		app.failedValidationResponse(c, v.Errors)
+		return
+	}
 
 	err = app.models.Movies.Update(movie)
 
 	if err != nil {
+		switch {
+		case errors.Is(err, models.ErrEditConflict):
+			app.editConflictResponse(c)
+		default:
+			app.serverErrorResponse(c, err)
+			return
+		}
 		app.serverErrorResponse(c, err)
 		return
 	}
