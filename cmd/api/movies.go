@@ -174,3 +174,49 @@ func (app *application) deleteMovieHandler(c *gin.Context) {
 
 	app.writeJSON(c, http.StatusOK, envelope{"message": "movie successfully deleted"}, nil)
 }
+
+func (app *application) listMoviesHandler(c *gin.Context) {
+	var input struct {
+		Title  string   `form:"title"`
+		Genres []string `form:"genres"`
+		data.Filters
+	}
+
+	if err := c.BindQuery(&input); err != nil {
+		app.serverErrorResponse(c, err)
+		return
+	}
+
+	if input.Page == 0 {
+		input.Page = 1
+	}
+	if input.PageSize == 0 {
+		input.PageSize = 20
+	}
+
+	if input.Sort == "" {
+		input.Sort = "id"
+	}
+
+	v := validator.New()
+
+	input.Filters.SortSafelist = []string{"id", "title", "year", "runtime", "-id", "-title", "-year", "-runtime"}
+
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(c, v.Errors)
+		return
+	}
+
+	if input.Genres == nil {
+		input.Genres = []string{}
+	}
+
+	movies, metaData, err := app.models.Movies.List(input.Title, input.Genres, input.Filters)
+
+	if err != nil {
+		app.serverErrorResponse(c, err)
+		return
+	}
+
+	app.writeJSON(c, http.StatusOK, envelope{"movies": movies, "meta_data": metaData}, nil)
+}

@@ -17,6 +17,15 @@ run: build
 	@echo "Running the application..."
 	@./$(BINARY_NAME)
 
+
+docker-up:
+	@echo "Running docker compose file"
+	@docker-compose up -d
+
+docker-down:
+	@echo "Running docker compose file"
+	@docker-compose down
+
 # Clean build artifacts
 clean:
 	@echo "Cleaning up build artifacts..."
