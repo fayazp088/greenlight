@@ -6,6 +6,7 @@ func (app *application) routes() *gin.Engine {
 	router := gin.Default()
 	router.Use(app.inputValidation())
 	router.Use(app.recoverPanic())
+	router.Use(app.rateLimiter())
 
 	v1 := router.Group("/v1")
 	{

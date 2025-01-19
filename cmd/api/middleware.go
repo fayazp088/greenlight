@@ -2,11 +2,20 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"golang.org/x/time/rate"
 )
+
+type inputValidationErrors struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
 
 func (app *application) recoverPanic() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -19,11 +28,6 @@ func (app *application) recoverPanic() gin.HandlerFunc {
 		}()
 		c.Next()
 	}
-}
-
-type inputValidationErrors struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
 }
 
 func (app *application) inputValidation() gin.HandlerFunc {
@@ -73,6 +77,65 @@ func (app *application) inputValidation() gin.HandlerFunc {
 					return
 				}
 			}
+		}
+	}
+}
+
+func (app *application) rateLimiter() gin.HandlerFunc {
+	type client struct {
+		limiter  *rate.Limiter
+		lastSeen time.Time
+	}
+
+	var (
+		mu      sync.Mutex
+		clients = make(map[string]*client)
+	)
+
+	go func() {
+		for {
+			time.Sleep(time.Minute)
+
+			mu.Lock()
+
+			for ip, client := range clients {
+				if time.Since(client.lastSeen) > 3*time.Minute {
+					delete(clients, ip)
+				}
+			}
+
+			mu.Unlock()
+		}
+	}()
+
+	return func(c *gin.Context) {
+		if app.config.limiter.enabled {
+
+			ip, _, err := net.SplitHostPort(c.Request.RemoteAddr)
+
+			if err != nil {
+				app.serverErrorResponse(c, err)
+				return
+			}
+
+			mu.Lock()
+
+			if _, found := clients[ip]; !found {
+				// Create and add a new client struct to the map if it doesn't already exist.
+				clients[ip] = &client{limiter: rate.NewLimiter(rate.Limit(app.config.limiter.rps), app.config.limiter.burst)}
+			}
+
+			clients[ip].lastSeen = time.Now()
+
+			if !clients[ip].limiter.Allow() {
+				mu.Unlock()
+				app.rateLimitExceededResponse(c)
+				return
+			}
+
+			mu.Unlock()
+
+			c.Next()
 		}
 	}
 }
