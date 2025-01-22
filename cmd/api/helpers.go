@@ -93,3 +93,16 @@ func (app *application) readJSON(c *gin.Context, dst any) error {
 
 	return nil
 }
+
+func (app *application) background(fn func()) {
+	go func() {
+		// Recover any panic.
+		defer func() {
+			if err := recover(); err != nil {
+				app.logger.Error(fmt.Sprintf("%v", err))
+			}
+		}()
+		// Execute the arbitrary function that we passed as the parameter.
+		fn()
+	}()
+}
