@@ -6,6 +6,7 @@ import (
 	"flag"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/fayazp088/greenlight/internal/mailer"
@@ -45,6 +46,7 @@ type application struct {
 	logger *slog.Logger
 	models models.Models
 	mailer mailer.Mailer
+	wg     sync.WaitGroup
 	// validate *validator.Validate
 }
 
