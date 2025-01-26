@@ -16,6 +16,8 @@ var (
 	ErrDuplicateEmail = errors.New("duplicate email")
 )
 
+var AnonymousUser = &User{}
+
 type User struct {
 	ID        int64     `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
@@ -40,6 +42,7 @@ func (p *password) Set(plaintextPassword string) error {
 	}
 	p.plaintext = &plaintextPassword
 	p.hash = hash
+
 	return nil
 }
 
@@ -120,7 +123,7 @@ func (m UserModel) Insert(user *User) error {
 
 func (m UserModel) GetByEmail(email string) (*User, error) {
 	query := `
-		SELECT id, created_at, name, email, activated, version
+		SELECT id, created_at, name, email, password_hash, activated, version
 		FROM users
 		WHERE email = $1`
 
@@ -133,6 +136,7 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 		&user.CreatedAt,
 		&user.Name,
 		&user.Email,
+		&user.Password.hash,
 		&user.Activated,
 		&user.Version,
 	)

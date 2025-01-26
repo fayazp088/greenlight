@@ -11,6 +11,7 @@ func (app *application) routes() *gin.Engine {
 	v1 := router.Group("/v1")
 	{
 		v1.GET("/health", app.Health)
+
 		v1.POST("/movies", app.createMovieHandler)
 		v1.GET("/movies", app.listMoviesHandler)
 		v1.PATCH("/movies/:id", app.updateMovieHandler)
@@ -19,6 +20,8 @@ func (app *application) routes() *gin.Engine {
 
 		v1.POST("/users", app.registerUserHandler)
 		v1.PUT("/users/activated", app.activateUserHandler)
+
+		v1.POST("/tokens/authentication", app.createAuthenticationTokenHandler)
 	}
 
 	router.NoMethod(app.methodNotAllowedResponse)

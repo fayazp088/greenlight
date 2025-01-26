@@ -69,3 +69,9 @@ func (app *application) rateLimitExceededResponse(c *gin.Context) {
 		"rate limit exceeded"
 	app.errorResponse(c, http.StatusTooManyRequests, message)
 }
+
+func (app *application) invalidCredentialsResponse(c *gin.Context) {
+	message :=
+		"invalid authentication credentials"
+	app.errorResponse(c, http.StatusUnauthorized, message)
+}
