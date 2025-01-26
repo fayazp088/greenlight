@@ -35,7 +35,6 @@ func (app *application) serverErrorResponse(c *gin.Context, err error) {
 	message :=
 		"the server encountered a problem and could not process your request"
 	app.errorResponse(c, http.StatusInternalServerError, message)
-
 }
 
 func (app *application) notFoundResponse(c *gin.Context) {

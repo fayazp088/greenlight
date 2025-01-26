@@ -18,6 +18,7 @@ func (app *application) routes() *gin.Engine {
 		v1.DELETE("/movies/:id", app.deleteMovieHandler)
 
 		v1.POST("/users", app.registerUserHandler)
+		v1.PUT("/users/activated", app.activateUserHandler)
 	}
 
 	router.NoMethod(app.methodNotAllowedResponse)
